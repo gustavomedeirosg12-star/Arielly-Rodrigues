@@ -1,10 +1,10 @@
 {
-  "projectId": "esmalteria-ary",
-  "appId": "1:277109223157:web:e93c89f04b6da381bb1fbc",
-  "apiKey": "AIzaSyD0-gG9c8jKLG6vqID_8f-aPMO05QZDLfQ",
-  "authDomain": "esmalteria-ary.firebaseapp.com",
+  "projectId": "gen-lang-client-0229149600",
+  "appId": "1:279259489916:web:3377ba696a2dde3f32cbf9",
+  "apiKey": "AIzaSyCC55pp2kd_HMrWfY0T00XmGw8ml5BulJo",
+  "authDomain": "gen-lang-client-0229149600.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
-  "storageBucket": "esmalteria-ary.firebasestorage.app",
-  "messagingSenderId": "277109223157",
-  "measurementId": "G-TKXFDG96YM"
+  "storageBucket": "gen-lang-client-0229149600.firebasestorage.app",
+  "messagingSenderId": "279259489916",
+  "measurementId": "G-9WE30PEVY3"
 }
