@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: appointments
+    // Document ID: auto-generated
+    // Fields:
+    //   - customerName: string (required, length 2-100)
+    //   - customerPhone: string (required, length 8-20)
+    //   - serviceId: string (required, in ['simples', 'esmaltação', 'alongamento', 'gel'])
+    //   - serviceName: string (required)
+    //   - price: number (required, positive)
+    //   - date: string (required, YYYY-MM-DD format)
+    //   - time: string (required, HH:MM format)
+    //   - status: string (required, in ['pending', 'confirmed', 'cancelled'])
+    //   - createdAt: timestamp (required)
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'gustavomedeirosg12@gmail.com';
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+    
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+    
+    function isValidTimeString(timeStr) {
+      return timeStr is string &&
+        timeStr.matches("^\\d{2}:\\d{2}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidAppointment(data) {
+      let allowedFields = ['customerName', 'customerPhone', 'serviceId', 'serviceName', 'price', 'date', 'time', 'status', 'createdAt'];
+      let validServices = ['alongamento', 'manutencao', 'banho_gel', 'manicure', 'pedicure', 'spa_pes'];
+      let validStatuses = ['pending', 'confirmed', 'cancelled'];
+      
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(allowedFields) &&
+             validStringLength('customerName', 2, 100) &&
+             validStringLength('customerPhone', 8, 20) &&
+             data.serviceId in validServices &&
+             validStringLength('serviceName', 2, 100) &&
+             data.price is number && data.price > 0 &&
+             isValidDateString(data.date) &&
+             isValidTimeString(data.time) &&
+             data.status in validStatuses &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /appointments/{appointmentId} {
+      // Allow public to read appointments to check availability (time slots)
+      allow read: if true;
+      
+      // Anyone can create an appointment (public booking form)
+      allow create: if isValidAppointment(request.resource.data) && 
+                    (request.resource.data.status == 'pending' || isAdmin());
+      
+      // Only authenticated users (the manicurist) can update or delete appointments
+      allow update, delete: if isAdmin();
+    }
+  }
+}
