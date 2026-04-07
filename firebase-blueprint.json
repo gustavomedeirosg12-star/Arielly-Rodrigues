@@ -38,12 +38,88 @@
           "enum": ["pending", "confirmed", "cancelled"],
           "description": "The status of the appointment."
         },
+        "professionalId": {
+          "type": "string",
+          "description": "The ID of the selected professional."
+        },
+        "professionalName": {
+          "type": "string",
+          "description": "The name of the selected professional."
+        },
         "createdAt": {
           "type": "timestamp",
           "description": "When the appointment was created."
         }
       },
       "required": ["customerName", "customerPhone", "serviceId", "serviceName", "price", "date", "time", "status", "createdAt"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A service offered by the salon.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the service."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the service."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the service."
+        },
+        "duration": {
+          "type": "number",
+          "description": "The duration of the service in minutes."
+        },
+        "isTraditional": {
+          "type": "boolean",
+          "description": "Whether this is a traditional service that can have gel polish added."
+        }
+      },
+      "required": ["name", "description", "price", "duration"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global settings for the salon.",
+      "type": "object",
+      "properties": {
+        "openTime": {
+          "type": "string",
+          "description": "Opening time in HH:MM format."
+        },
+        "closeTime": {
+          "type": "string",
+          "description": "Closing time in HH:MM format."
+        },
+        "slotInterval": {
+          "type": "number",
+          "description": "Interval between slots in minutes."
+        }
+      },
+      "required": ["openTime", "closeTime", "slotInterval"]
+    },
+    "Professional": {
+      "title": "Professional",
+      "description": "A staff member who provides services.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the professional."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role or title of the professional."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the professional is currently active and available for booking."
+        }
+      },
+      "required": ["name", "role", "active"]
     }
   },
   "firestore": {
@@ -52,6 +128,24 @@
         "$ref": "#/entities/Appointment"
       },
       "description": "Stores all customer appointments."
+    },
+    "/services/{serviceId}": {
+      "schema": {
+        "$ref": "#/entities/Service"
+      },
+      "description": "Stores all available services."
+    },
+    "/settings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/Settings"
+      },
+      "description": "Stores global settings like operating hours."
+    },
+    "/professionals/{professionalId}": {
+      "schema": {
+        "$ref": "#/entities/Professional"
+      },
+      "description": "Stores staff members."
     }
   }
 }

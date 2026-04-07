@@ -1,27 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Phone, User, CheckCircle2, AlertCircle, Sparkles, Settings, MapPin, Instagram, Info, Camera, MessageCircle } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from 'firebase/firestore';
+import { Calendar, Clock, Phone, User, CheckCircle2, AlertCircle, Sparkles, Settings, MapPin, Instagram, Info, Camera, MessageCircle, UserCircle } from 'lucide-react';
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 
-const SERVICES = [
-  { id: 'alongamento', name: 'Alongamento Mold F1 / Fibra', price: 150, description: 'Extensão com acabamento natural e resistente' },
-  { id: 'manutencao', name: 'Manutenção de Alongamento', price: 100, description: 'Manutenção do alongamento em gel ou fibra' },
-  { id: 'banho_gel', name: 'Banho de Gel / Blindagem', price: 70, description: 'Proteção e durabilidade para unhas naturais' },
-  { id: 'manicure', name: 'Manicure Tradicional', price: 35, description: 'Cutilagem e esmaltação tradicional' },
-  { id: 'pedicure', name: 'Pedicure Tradicional', price: 45, description: 'Cutilagem e esmaltação tradicional' },
-  { id: 'spa_pes', name: 'Spa dos Pés', price: 65, description: 'Cuidado completo, hidratação e relaxamento' },
-];
-
-const TIME_SLOTS = [
-  '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'
-];
-
 const WHATSAPP_NUMBER = '5534997204022';
 
 export default function Booking() {
-  const [selectedService, setSelectedService] = useState(SERVICES[0].id);
+  const [services, setServices] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [settings, setSettings] = useState<any>({ openTime: '09:00', closeTime: '18:00', slotInterval: 60 });
+  const [loading, setLoading] = useState(true);
+
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedProfessional, setSelectedProfessional] = useState('');
   const [addGelPolish, setAddGelPolish] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -35,9 +28,57 @@ export default function Booking() {
 
   const [showRoleModal, setShowRoleModal] = useState(false);
 
-  const selectedServiceObj = SERVICES.find(s => s.id === selectedService);
-  const isTraditional = selectedService === 'manicure' || selectedService === 'pedicure';
+  // Fetch Services and Settings
+  useEffect(() => {
+    const unsubServices = onSnapshot(collection(db, 'services'), (snapshot) => {
+      const fetchedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setServices(fetchedServices);
+      if (fetchedServices.length > 0 && !selectedService) {
+        setSelectedService(fetchedServices[0].id);
+      }
+    });
+
+    const unsubProfessionals = onSnapshot(collection(db, 'professionals'), (snapshot) => {
+      const profs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProfessionals(profs.filter((p: any) => p.active !== false));
+    });
+
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+      if (docSnap.exists()) {
+        setSettings(docSnap.data());
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      unsubServices();
+      unsubProfessionals();
+      unsubSettings();
+    };
+  }, []);
+
+  const selectedServiceObj = services.find(s => s.id === selectedService);
+  const isTraditional = selectedServiceObj?.isTraditional || false;
   const finalPrice = selectedServiceObj ? (selectedServiceObj.price + (isTraditional && addGelPolish ? 10 : 0)) : 0;
+
+  // Generate Time Slots based on settings
+  const generateTimeSlots = () => {
+    const times = [];
+    let [hour, minute] = settings.openTime.split(':').map(Number);
+    const [closeHour, closeMinute] = settings.closeTime.split(':').map(Number);
+    
+    while (hour < closeHour || (hour === closeHour && minute <= closeMinute)) {
+      times.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+      minute += settings.slotInterval;
+      if (minute >= 60) {
+        hour += Math.floor(minute / 60);
+        minute = minute % 60;
+      }
+    }
+    return times;
+  };
+
+  const TIME_SLOTS = generateTimeSlots();
 
   // Get today's date in YYYY-MM-DD format for the min attribute of the date picker
   const todayFormatted = format(new Date(), 'yyyy-MM-dd');
@@ -70,7 +111,8 @@ export default function Booking() {
 
   const handleServiceSelect = (id: string) => {
     setSelectedService(id);
-    if (id !== 'manicure' && id !== 'pedicure') {
+    const service = services.find(s => s.id === id);
+    if (!service?.isTraditional) {
       setAddGelPolish(false);
     }
   };
@@ -97,10 +139,11 @@ export default function Booking() {
     setIsSubmitting(true);
 
     try {
-      const service = SERVICES.find(s => s.id === selectedService)!;
+      const service = services.find(s => s.id === selectedService)!;
+      const prof = professionals.find(p => p.id === selectedProfessional);
       const finalServiceName = service.name + (isTraditional && addGelPolish ? ' (+ Esmaltação em Gel)' : '');
       
-      await addDoc(collection(db, 'appointments'), {
+      const appointmentData: any = {
         customerName: name,
         customerPhone: phone,
         serviceId: service.id,
@@ -110,18 +153,27 @@ export default function Booking() {
         time: selectedTime,
         status: 'pending',
         createdAt: serverTimestamp()
-      });
+      };
+
+      if (prof) {
+        appointmentData.professionalId = prof.id;
+        appointmentData.professionalName = prof.name;
+      }
+
+      await addDoc(collection(db, 'appointments'), appointmentData);
 
       setSuccess(true);
 
       const formattedDate = format(new Date(selectedDate + 'T12:00:00'), "dd/MM/yyyy");
       const addOnText = (isTraditional && addGelPolish) ? '\n*Adicional:* Esmaltação em Gel (+ R$ 10,00)' : '';
-      const message = `Olá! Gostaria de agendar um horário.\n\n*Serviço:* ${service.name}${addOnText}\n*Data:* ${formattedDate}\n*Horário:* ${selectedTime}\n*Nome:* ${name}\n*Telefone:* ${phone}\n*Valor Total:* R$ ${finalPrice},00`;
+      const profText = prof ? `\n*Profissional:* ${prof.name}` : '';
+      const message = `Olá! Gostaria de agendar um horário.\n\n*Serviço:* ${service.name}${addOnText}${profText}\n*Data:* ${formattedDate}\n*Horário:* ${selectedTime}\n*Nome:* ${name}\n*Telefone:* ${phone}\n*Valor Total:* R$ ${finalPrice},00`;
       
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       
-      setSelectedService(SERVICES[0].id);
+      setSelectedService(services[0]?.id || '');
+      setSelectedProfessional('');
       setAddGelPolish(false);
       setSelectedDate('');
       setSelectedTime('');
@@ -136,6 +188,10 @@ export default function Booking() {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return <div className="min-h-screen bg-black text-gold-500 flex items-center justify-center">Carregando...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-black font-sans text-zinc-100 selection:bg-gold-500/30">
@@ -191,29 +247,33 @@ export default function Booking() {
           </div>
 
           <div className="space-y-4">
-            {SERVICES.map((service) => (
-              <div 
-                key={service.id}
-                onClick={() => handleServiceSelect(service.id)}
-                className={`p-5 rounded-xl border transition-all cursor-pointer ${
-                  selectedService === service.id 
-                    ? 'border-gold-500 bg-zinc-900/80 shadow-[0_0_20px_rgba(212,175,55,0.1)]' 
-                    : 'border-zinc-800 bg-zinc-950 hover:border-gold-900 hover:bg-zinc-900'
-                }`}
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <h3 className={`font-medium text-lg ${selectedService === service.id ? 'text-gold-400' : 'text-zinc-200'}`}>
-                      {service.name}
-                    </h3>
-                    <p className="text-sm text-zinc-500 mt-1">{service.description}</p>
+            {services.length === 0 ? (
+               <p className="text-zinc-500">Nenhum serviço disponível no momento.</p>
+            ) : (
+              services.map((service) => (
+                <div 
+                  key={service.id}
+                  onClick={() => handleServiceSelect(service.id)}
+                  className={`p-5 rounded-xl border transition-all cursor-pointer ${
+                    selectedService === service.id 
+                      ? 'border-gold-500 bg-zinc-900/80 shadow-[0_0_20px_rgba(212,175,55,0.1)]' 
+                      : 'border-zinc-800 bg-zinc-950 hover:border-gold-900 hover:bg-zinc-900'
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <h3 className={`font-medium text-lg ${selectedService === service.id ? 'text-gold-400' : 'text-zinc-200'}`}>
+                        {service.name}
+                      </h3>
+                      <p className="text-sm text-zinc-500 mt-1">{service.description}</p>
+                    </div>
+                    <span className="font-semibold text-gold-400 bg-gold-900/20 px-4 py-1.5 rounded-full text-sm border border-gold-900/30 whitespace-nowrap">
+                      R$ {service.price}
+                    </span>
                   </div>
-                  <span className="font-semibold text-gold-400 bg-gold-900/20 px-4 py-1.5 rounded-full text-sm border border-gold-900/30 whitespace-nowrap">
-                    R$ {service.price}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
 
             {isTraditional && (
               <div 
@@ -255,7 +315,54 @@ export default function Booking() {
 
             <form onSubmit={handleBooking} className="space-y-6">
               
-              <div>
+              {/* Profissional Selection */}
+              {professionals.length > 0 && (
+                <div className="pt-6 border-t border-zinc-800">
+                  <label className="block text-sm font-medium text-zinc-300 mb-4 flex items-center gap-2">
+                    <UserCircle className="w-4 h-4 text-gold-500" />
+                    Profissional (Opcional)
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div
+                      onClick={() => setSelectedProfessional('')}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center gap-3 ${
+                        selectedProfessional === ''
+                          ? 'border-gold-500 bg-gold-500/10'
+                          : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center">
+                        <UserCircle className="w-5 h-5 text-zinc-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">Qualquer Profissional</p>
+                        <p className="text-xs text-zinc-500">O primeiro disponível</p>
+                      </div>
+                    </div>
+                    {professionals.map((prof) => (
+                      <div
+                        key={prof.id}
+                        onClick={() => setSelectedProfessional(prof.id)}
+                        className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center gap-3 ${
+                          selectedProfessional === prof.id
+                            ? 'border-gold-500 bg-gold-500/10'
+                            : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center">
+                          <UserCircle className="w-5 h-5 text-gold-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{prof.name}</p>
+                          <p className="text-xs text-zinc-500">{prof.role}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-6 border-t border-zinc-800">
                 <label className="block text-sm font-medium text-zinc-300 mb-2 flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-gold-500" />
                   Data
@@ -298,8 +405,11 @@ export default function Booking() {
                       );
                     })}
                   </div>
-                  {bookedSlots.length === TIME_SLOTS.length && (
+                  {bookedSlots.length === TIME_SLOTS.length && TIME_SLOTS.length > 0 && (
                     <p className="text-red-400 text-sm mt-2">Todos os horários esgotados para este dia.</p>
+                  )}
+                  {TIME_SLOTS.length === 0 && (
+                    <p className="text-red-400 text-sm mt-2">Nenhum horário configurado.</p>
                   )}
                 </div>
               )}
@@ -341,7 +451,7 @@ export default function Booking() {
 
               <button
                 type="submit"
-                disabled={isSubmitting || !selectedDate || !selectedTime}
+                disabled={isSubmitting || !selectedDate || !selectedTime || !selectedService}
                 className="w-full py-4 bg-gradient-to-r from-gold-600 to-gold-400 hover:from-gold-500 hover:to-gold-300 text-black font-semibold rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.2)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting ? 'Processando...' : 'Confirmar Agendamento'}

@@ -61,21 +61,51 @@ service cloud.firestore {
     // ===============================================================
     
     function isValidAppointment(data) {
-      let allowedFields = ['customerName', 'customerPhone', 'serviceId', 'serviceName', 'price', 'date', 'time', 'status', 'createdAt'];
-      let validServices = ['alongamento', 'manutencao', 'banho_gel', 'manicure', 'pedicure', 'spa_pes'];
+      let allowedFields = ['customerName', 'customerPhone', 'serviceId', 'serviceName', 'price', 'date', 'time', 'status', 'createdAt', 'professionalId', 'professionalName'];
       let validStatuses = ['pending', 'confirmed', 'cancelled'];
       
       return hasOnlyAllowedFields(allowedFields) &&
-             hasRequiredFields(allowedFields) &&
+             hasRequiredFields(['customerName', 'customerPhone', 'serviceId', 'serviceName', 'price', 'date', 'time', 'status', 'createdAt']) &&
              validStringLength('customerName', 2, 100) &&
              validStringLength('customerPhone', 8, 20) &&
-             data.serviceId in validServices &&
+             validStringLength('serviceId', 1, 100) &&
              validStringLength('serviceName', 2, 100) &&
-             data.price is number && data.price > 0 &&
+             (!('professionalId' in data) || validStringLength('professionalId', 1, 100)) &&
+             (!('professionalName' in data) || validStringLength('professionalName', 2, 100)) &&
+             data.price is number && data.price >= 0 &&
              isValidDateString(data.date) &&
              isValidTimeString(data.time) &&
              data.status in validStatuses &&
              data.createdAt is timestamp;
+    }
+
+    function isValidService(data) {
+      let allowedFields = ['name', 'description', 'price', 'duration', 'isTraditional'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['name', 'description', 'price', 'duration']) &&
+             validStringLength('name', 2, 100) &&
+             validStringLength('description', 0, 500) &&
+             data.price is number && data.price >= 0 &&
+             data.duration is number && data.duration > 0 &&
+             (!('isTraditional' in data) || data.isTraditional is bool);
+    }
+
+    function isValidSettings(data) {
+      let allowedFields = ['openTime', 'closeTime', 'slotInterval'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(allowedFields) &&
+             isValidTimeString(data.openTime) &&
+             isValidTimeString(data.closeTime) &&
+             data.slotInterval is number && data.slotInterval > 0;
+    }
+
+    function isValidProfessional(data) {
+      let allowedFields = ['name', 'role', 'active'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(allowedFields) &&
+             validStringLength('name', 2, 100) &&
+             validStringLength('role', 2, 100) &&
+             data.active is bool;
     }
 
     // ===============================================================
@@ -92,6 +122,24 @@ service cloud.firestore {
       
       // Only authenticated users (the manicurist) can update or delete appointments
       allow update, delete: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidService(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidSettings(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /professionals/{professionalId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidProfessional(request.resource.data);
+      allow delete: if isAdmin();
     }
   }
 }
