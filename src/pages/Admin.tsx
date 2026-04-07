@@ -627,14 +627,12 @@ export default function Admin() {
             <div className="md:col-span-2">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-medium text-white">Serviços Cadastrados</h2>
-                {services.length === 0 && (
-                  <button 
-                    onClick={generateDefaultServices}
-                    className="px-4 py-2 bg-gold-600/20 text-gold-400 hover:bg-gold-600/30 border border-gold-600/50 rounded-lg text-sm transition-colors"
-                  >
-                    Recuperar Serviços Padrão
-                  </button>
-                )}
+                <button 
+                  onClick={generateDefaultServices}
+                  className="px-4 py-2 bg-gold-600/20 text-gold-400 hover:bg-gold-600/30 border border-gold-600/50 rounded-lg text-sm transition-colors"
+                >
+                  Recuperar Serviços Padrão
+                </button>
               </div>
               <div className="space-y-4">
                 {services.length === 0 ? (
