@@ -13,7 +13,7 @@ export default function Booking() {
   const [settings, setSettings] = useState<any>({ openTime: '09:00', closeTime: '18:00', slotInterval: 60 });
   const [loading, setLoading] = useState(true);
 
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedProfessional, setSelectedProfessional] = useState('');
   const [addGelPolish, setAddGelPolish] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
@@ -33,9 +33,6 @@ export default function Booking() {
     const unsubServices = onSnapshot(collection(db, 'services'), (snapshot) => {
       const fetchedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setServices(fetchedServices);
-      if (fetchedServices.length > 0 && !selectedService) {
-        setSelectedService(fetchedServices[0].id);
-      }
     });
 
     const unsubProfessionals = onSnapshot(collection(db, 'professionals'), (snapshot) => {
@@ -57,9 +54,16 @@ export default function Booking() {
     };
   }, []);
 
-  const selectedServiceObj = services.find(s => s.id === selectedService);
-  const isTraditional = selectedServiceObj?.isTraditional || false;
-  const finalPrice = selectedServiceObj ? (selectedServiceObj.price + (isTraditional && addGelPolish ? 10 : 0)) : 0;
+  const selectedServicesObjs = services.filter(s => selectedServices.includes(s.id));
+  const hasTraditional = selectedServicesObjs.some(s => s.isTraditional);
+  const basePrice = selectedServicesObjs.reduce((sum, s) => sum + (s.price || 0), 0);
+  const finalPrice = basePrice + (hasTraditional && addGelPolish ? 10 : 0);
+
+  useEffect(() => {
+    if (!hasTraditional) {
+      setAddGelPolish(false);
+    }
+  }, [hasTraditional]);
 
   // Generate Time Slots based on settings
   const generateTimeSlots = () => {
@@ -110,19 +114,21 @@ export default function Booking() {
   }, [selectedDate, selectedTime]);
 
   const handleServiceSelect = (id: string) => {
-    setSelectedService(id);
-    const service = services.find(s => s.id === id);
-    if (!service?.isTraditional) {
-      setAddGelPolish(false);
-    }
+    setSelectedServices(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(sId => sId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
   };
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
-    if (!selectedService || !selectedDate || !selectedTime || !name || !phone) {
-      setError('Por favor, preencha todos os campos.');
+    if (selectedServices.length === 0 || !selectedDate || !selectedTime || !name || !phone) {
+      setError('Por favor, preencha todos os campos e escolha pelo menos um serviço.');
       return;
     }
 
@@ -139,14 +145,15 @@ export default function Booking() {
     setIsSubmitting(true);
 
     try {
-      const service = services.find(s => s.id === selectedService)!;
       const prof = professionals.find(p => p.id === selectedProfessional);
-      const finalServiceName = service.name + (isTraditional && addGelPolish ? ' (+ Esmaltação em Gel)' : '');
+      const serviceNames = selectedServicesObjs.map(s => s.name).join(', ');
+      const serviceIds = selectedServicesObjs.map(s => s.id).join(',');
+      const finalServiceName = serviceNames + (hasTraditional && addGelPolish ? ' (+ Esmaltação em Gel)' : '');
       
       const appointmentData: any = {
         customerName: name,
         customerPhone: phone,
-        serviceId: service.id,
+        serviceId: serviceIds,
         serviceName: finalServiceName,
         price: finalPrice,
         date: selectedDate,
@@ -165,14 +172,14 @@ export default function Booking() {
       setSuccess(true);
 
       const formattedDate = format(new Date(selectedDate + 'T12:00:00'), "dd/MM/yyyy");
-      const addOnText = (isTraditional && addGelPolish) ? '\n*Adicional:* Esmaltação em Gel (+ R$ 10,00)' : '';
+      const addOnText = (hasTraditional && addGelPolish) ? '\n*Adicional:* Esmaltação em Gel (+ R$ 10,00)' : '';
       const profText = prof ? `\n*Profissional:* ${prof.name}` : '';
-      const message = `Olá! Gostaria de agendar um horário.\n\n*Serviço:* ${service.name}${addOnText}${profText}\n*Data:* ${formattedDate}\n*Horário:* ${selectedTime}\n*Nome:* ${name}\n*Telefone:* ${phone}\n*Valor Total:* R$ ${finalPrice},00`;
+      const message = `Olá! Gostaria de agendar um horário.\n\n*Serviços:* ${serviceNames}${addOnText}${profText}\n*Data:* ${formattedDate}\n*Horário:* ${selectedTime}\n*Nome:* ${name}\n*Telefone:* ${phone}\n*Valor Total:* R$ ${finalPrice},00`;
       
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       
-      setSelectedService(services[0]?.id || '');
+      setSelectedServices([]);
       setSelectedProfessional('');
       setAddGelPolish(false);
       setSelectedDate('');
@@ -255,14 +262,14 @@ export default function Booking() {
                   key={service.id}
                   onClick={() => handleServiceSelect(service.id)}
                   className={`p-5 rounded-xl border transition-all cursor-pointer ${
-                    selectedService === service.id 
+                    selectedServices.includes(service.id) 
                       ? 'border-gold-500 bg-zinc-900/80 shadow-[0_0_20px_rgba(212,175,55,0.1)]' 
                       : 'border-zinc-800 bg-zinc-950 hover:border-gold-900 hover:bg-zinc-900'
                   }`}
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div>
-                      <h3 className={`font-medium text-lg ${selectedService === service.id ? 'text-gold-400' : 'text-zinc-200'}`}>
+                      <h3 className={`font-medium text-lg ${selectedServices.includes(service.id) ? 'text-gold-400' : 'text-zinc-200'}`}>
                         {service.name}
                       </h3>
                       <p className="text-sm text-zinc-500 mt-1">{service.description}</p>
@@ -275,7 +282,7 @@ export default function Booking() {
               ))
             )}
 
-            {isTraditional && (
+            {hasTraditional && (
               <div 
                 onClick={() => setAddGelPolish(!addGelPolish)}
                 className="mt-6 p-4 rounded-xl border border-gold-900/50 bg-gold-900/10 flex items-center justify-between cursor-pointer hover:bg-gold-900/20 transition-all"
@@ -451,7 +458,7 @@ export default function Booking() {
 
               <button
                 type="submit"
-                disabled={isSubmitting || !selectedDate || !selectedTime || !selectedService}
+                disabled={isSubmitting || !selectedDate || !selectedTime || selectedServices.length === 0}
                 className="w-full py-4 bg-gradient-to-r from-gold-600 to-gold-400 hover:from-gold-500 hover:to-gold-300 text-black font-semibold rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.2)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting ? 'Processando...' : 'Confirmar Agendamento'}

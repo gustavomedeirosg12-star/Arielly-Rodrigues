@@ -68,8 +68,8 @@ service cloud.firestore {
              hasRequiredFields(['customerName', 'customerPhone', 'serviceId', 'serviceName', 'price', 'date', 'time', 'status', 'createdAt']) &&
              validStringLength('customerName', 2, 100) &&
              validStringLength('customerPhone', 8, 20) &&
-             validStringLength('serviceId', 1, 100) &&
-             validStringLength('serviceName', 2, 100) &&
+             validStringLength('serviceId', 1, 500) &&
+             validStringLength('serviceName', 2, 500) &&
              (!('professionalId' in data) || validStringLength('professionalId', 1, 100)) &&
              (!('professionalName' in data) || validStringLength('professionalName', 2, 100)) &&
              data.price is number && data.price >= 0 &&
