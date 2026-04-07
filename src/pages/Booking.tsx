@@ -230,15 +230,30 @@ export default function Booking() {
           </h2>
           <p className="text-zinc-400">Um pouco da nossa arte em unhas para você se inspirar.</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
-            <img src="https://i.ibb.co/PzzFPshN/1231.png" alt="Trabalho de Manicure 1" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <img src="https://i.ibb.co/PzzFPshN/1231.png" alt="Trabalho de Manicure 1" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
           </div>
           <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
-            <img src="https://i.ibb.co/3yMLQGDF/454.png" alt="Trabalho de Manicure 2" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <img src="https://i.ibb.co/3yMLQGDF/454.png" alt="Trabalho de Manicure 2" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
           </div>
           <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
-            <img src="https://i.ibb.co/ycJSD64T/Capturar1213212.png" alt="Trabalho de Manicure 3" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <img src="https://i.ibb.co/ycJSD64T/Capturar1213212.png" alt="Trabalho de Manicure 3" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+          </div>
+          <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
+            <img src="https://i.ibb.co/Q7w4Z6y1/Whats-App-Image-2026-04-06-at-22-16-30-1.jpg" alt="Trabalho de Manicure 4" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+          </div>
+          <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
+            <img src="https://i.ibb.co/Nd48tW2h/Whats-App-Image-2026-04-06-at-22-16-30.jpg" alt="Trabalho de Manicure 5" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+          </div>
+          <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
+            <img src="https://i.ibb.co/ZRNdNQNZ/Whats-App-Image-2026-04-06-at-22-16-29-2.jpg" alt="Trabalho de Manicure 6" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+          </div>
+          <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
+            <img src="https://i.ibb.co/Ldp4JkjH/Whats-App-Image-2026-04-06-at-22-16-29-1.jpg" alt="Trabalho de Manicure 7" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+          </div>
+          <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-zinc-800 group">
+            <img src="https://i.ibb.co/FSZ0wKN/Whats-App-Image-2026-04-06-at-22-16-29.jpg" alt="Trabalho de Manicure 8" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
           </div>
         </div>
       </section>

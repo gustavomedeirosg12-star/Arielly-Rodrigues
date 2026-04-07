@@ -29,7 +29,7 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isAuthenticated() && (request.auth.token.email == 'gustavomedeirosg12@gmail.com' || request.auth.token.email == 'arielly1997batista@icloud.com');
+      return isAuthenticated() && (request.auth.token.email == 'gustavomedeirosg12@gmail.com' || request.auth.token.email == 'arielly1997batista@icloud.com' || request.auth.token.email == 'ariellylorrana18@gmail.com');
     }
     
     function hasOnlyAllowedFields(fields) {
