@@ -179,10 +179,10 @@ export default function Admin() {
   const editService = (service: any) => {
     setEditingServiceId(service.id);
     setServiceForm({
-      name: service.name,
-      description: service.description,
-      price: service.price,
-      duration: service.duration,
+      name: service.name || '',
+      description: service.description || '',
+      price: service.price || 0,
+      duration: service.duration || 60,
       isTraditional: service.isTraditional || false
     });
     setActiveTab('services');
@@ -221,9 +221,9 @@ export default function Admin() {
   const editProfessional = (prof: any) => {
     setEditingProfessionalId(prof.id);
     setProfessionalForm({
-      name: prof.name,
-      role: prof.role,
-      active: prof.active
+      name: prof.name || '',
+      role: prof.role || 'Manicure',
+      active: prof.active !== undefined ? prof.active : true
     });
     setActiveTab('professionals');
   };
