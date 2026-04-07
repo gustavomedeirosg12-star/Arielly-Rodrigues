@@ -135,6 +135,29 @@ export default function Admin() {
   };
 
   // --- Services Logic ---
+  const generateDefaultServices = async () => {
+    if (!window.confirm('Isso irá adicionar os serviços padrão da Esmalteria. Deseja continuar?')) return;
+    
+    const defaultServices = [
+      { name: 'Manicure e Pedicure (Pé e Mão)', description: 'Cutilagem e esmaltação tradicional.', price: 60, duration: 90, isTraditional: true },
+      { name: 'Manicure Simples', description: 'Cutilagem e esmaltação tradicional das mãos.', price: 35, duration: 45, isTraditional: true },
+      { name: 'Pedicure Simples', description: 'Cutilagem e esmaltação tradicional dos pés.', price: 35, duration: 45, isTraditional: true },
+      { name: 'Alongamento em Gel', description: 'Alongamento completo com tip ou fibra de vidro.', price: 150, duration: 120, isTraditional: false },
+      { name: 'Manutenção de Gel', description: 'Manutenção do alongamento (até 20 dias).', price: 90, duration: 90, isTraditional: false },
+      { name: 'Banho de Gel', description: 'Cobertura de gel sobre a unha natural.', price: 80, duration: 60, isTraditional: false }
+    ];
+
+    try {
+      for (const service of defaultServices) {
+        await addDoc(collection(db, 'services'), service);
+      }
+      alert('Serviços recuperados com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar serviços:', error);
+      alert('Erro ao recuperar serviços.');
+    }
+  };
+
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -602,7 +625,17 @@ export default function Admin() {
             </div>
 
             <div className="md:col-span-2">
-              <h2 className="text-xl font-medium text-white mb-6">Serviços Cadastrados</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-medium text-white">Serviços Cadastrados</h2>
+                {services.length === 0 && (
+                  <button 
+                    onClick={generateDefaultServices}
+                    className="px-4 py-2 bg-gold-600/20 text-gold-400 hover:bg-gold-600/30 border border-gold-600/50 rounded-lg text-sm transition-colors"
+                  >
+                    Recuperar Serviços Padrão
+                  </button>
+                )}
+              </div>
               <div className="space-y-4">
                 {services.length === 0 ? (
                   <p className="text-zinc-500">Nenhum serviço cadastrado. Adicione o primeiro!</p>
