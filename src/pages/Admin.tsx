@@ -177,15 +177,21 @@ export default function Admin() {
   };
 
   const editService = (service: any) => {
-    setEditingServiceId(service.id);
-    setServiceForm({
-      name: service.name || '',
-      description: service.description || '',
-      price: service.price || 0,
-      duration: service.duration || 60,
-      isTraditional: service.isTraditional || false
-    });
-    setActiveTab('services');
+    try {
+      setEditingServiceId(service.id);
+      setServiceForm({
+        name: service.name ? String(service.name) : '',
+        description: service.description ? String(service.description) : '',
+        price: service.price ? Number(service.price) : 0,
+        duration: service.duration ? Number(service.duration) : 60,
+        isTraditional: Boolean(service.isTraditional)
+      });
+      setActiveTab('services');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error("Erro ao editar serviço:", err);
+      alert("Ocorreu um erro ao tentar editar este serviço.");
+    }
   };
 
   const deleteService = async (id: string) => {
@@ -219,13 +225,19 @@ export default function Admin() {
   };
 
   const editProfessional = (prof: any) => {
-    setEditingProfessionalId(prof.id);
-    setProfessionalForm({
-      name: prof.name || '',
-      role: prof.role || 'Manicure',
-      active: prof.active !== undefined ? prof.active : true
-    });
-    setActiveTab('professionals');
+    try {
+      setEditingProfessionalId(prof.id);
+      setProfessionalForm({
+        name: prof.name ? String(prof.name) : '',
+        role: prof.role ? String(prof.role) : 'Manicure',
+        active: prof.active !== undefined ? Boolean(prof.active) : true
+      });
+      setActiveTab('professionals');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error("Erro ao editar profissional:", err);
+      alert("Ocorreu um erro ao tentar editar este profissional.");
+    }
   };
 
   const deleteProfessional = async (id: string) => {
