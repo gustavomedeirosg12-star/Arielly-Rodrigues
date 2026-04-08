@@ -319,7 +319,13 @@ export default function Admin() {
     );
   }
 
-  if (user.email !== 'gustavomedeirosg12@gmail.com') {
+  const allowedAdmins = [
+    'gustavomedeirosg12@gmail.com',
+    'arielly1997batista@icloud.com',
+    'ariellylorrana18@gmail.com'
+  ];
+
+  if (!allowedAdmins.includes(user.email || '')) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="bg-zinc-950 p-8 rounded-2xl border border-red-900/50 max-w-md w-full text-center">
