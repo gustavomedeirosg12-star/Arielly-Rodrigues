@@ -91,12 +91,15 @@ service cloud.firestore {
     }
 
     function isValidSettings(data) {
-      let allowedFields = ['openTime', 'closeTime', 'slotInterval'];
+      let allowedFields = ['openTime', 'closeTime', 'slotInterval', 'closedDays', 'blockedDates', 'minAdvanceHours'];
       return hasOnlyAllowedFields(allowedFields) &&
-             hasRequiredFields(allowedFields) &&
+             hasRequiredFields(['openTime', 'closeTime', 'slotInterval']) &&
              isValidTimeString(data.openTime) &&
              isValidTimeString(data.closeTime) &&
-             data.slotInterval is number && data.slotInterval > 0;
+             data.slotInterval is number && data.slotInterval > 0 &&
+             (!('closedDays' in data) || data.closedDays is list) &&
+             (!('blockedDates' in data) || data.blockedDates is list) &&
+             (!('minAdvanceHours' in data) || data.minAdvanceHours is number);
     }
 
     function isValidProfessional(data) {

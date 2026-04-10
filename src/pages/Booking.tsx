@@ -84,6 +84,18 @@ export default function Booking() {
 
   const TIME_SLOTS = generateTimeSlots();
 
+  const isTimeValid = (timeStr: string) => {
+    const todayFormatted = new Date().toLocaleDateString('en-CA');
+    if (selectedDate !== todayFormatted) return true; // Future date is fine
+    
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const slotDate = new Date();
+    slotDate.setHours(hours, minutes, 0, 0);
+    
+    const minAdvanceMs = (settings.minAdvanceHours || 0) * 60 * 60 * 1000;
+    return (slotDate.getTime() - new Date().getTime()) >= minAdvanceMs;
+  };
+
   // Get today's date in YYYY-MM-DD format for the min attribute of the date picker
   const todayFormatted = format(new Date(), 'yyyy-MM-dd');
 
@@ -112,6 +124,32 @@ export default function Booking() {
 
     return () => unsubscribe();
   }, [selectedDate, selectedTime]);
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dateVal = e.target.value;
+    if (!dateVal) {
+      setSelectedDate('');
+      return;
+    }
+
+    const dateObj = new Date(dateVal + 'T12:00:00');
+    const dayOfWeek = dateObj.getDay(); // 0 = Sun, 1 = Mon, etc.
+
+    if (settings.closedDays && settings.closedDays.includes(dayOfWeek)) {
+      setError('O salão não abre neste dia da semana. Por favor, escolha outra data.');
+      setSelectedDate('');
+      return;
+    }
+
+    if (settings.blockedDates && settings.blockedDates.includes(dateVal)) {
+      setError('Esta data não está disponível para agendamentos. Por favor, escolha outra.');
+      setSelectedDate('');
+      return;
+    }
+
+    setError('');
+    setSelectedDate(dateVal);
+  };
 
   const handleServiceSelect = (id: string) => {
     setSelectedServices(prev => {
@@ -393,7 +431,7 @@ export default function Booking() {
                   type="date"
                   min={todayFormatted}
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  onChange={handleDateChange}
                   className="w-full p-3 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-100 focus:bg-zinc-950 focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500 outline-none transition-all color-scheme-dark"
                   style={{ colorScheme: 'dark' }}
                 />
@@ -408,14 +446,17 @@ export default function Booking() {
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {TIME_SLOTS.map(time => {
                       const isBooked = bookedSlots.includes(time);
+                      const isValid = isTimeValid(time);
+                      const disabled = isBooked || !isValid;
+                      
                       return (
                         <button
                           key={time}
                           type="button"
-                          disabled={isBooked}
+                          disabled={disabled}
                           onClick={() => setSelectedTime(time)}
                           className={`py-2 text-sm rounded-lg border transition-all ${
-                            isBooked 
+                            disabled 
                               ? 'bg-zinc-900 text-zinc-600 border-zinc-800 opacity-50 cursor-not-allowed line-through'
                               : selectedTime === time
                                 ? 'bg-gold-500 text-black border-gold-500 font-medium shadow-[0_0_10px_rgba(212,175,55,0.3)]'
@@ -523,7 +564,16 @@ export default function Booking() {
                 </div>
                 <div>
                   <p className="font-medium text-zinc-100">Endereço</p>
-                  <p className="text-sm">Rua Iguaçu, Nº 138<br/>Marta Helena - CEP: 38402-047</p>
+                  <p className="text-sm mb-1">Rua Iguaçu, Nº 138<br/>Marta Helena - CEP: 38402-047</p>
+                  <a 
+                    href="https://maps.google.com/?q=Rua+Iguaçu,+138,+Marta+Helena,+Uberlândia" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-gold-500 hover:text-gold-400 text-xs font-medium transition-colors"
+                  >
+                    <MapPin className="w-3 h-3" />
+                    Como Chegar (Google Maps)
+                  </a>
                 </div>
               </div>
 

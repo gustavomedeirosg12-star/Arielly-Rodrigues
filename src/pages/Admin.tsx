@@ -27,7 +27,15 @@ export default function Admin() {
   const [professionalForm, setProfessionalForm] = useState({ name: '', role: 'Manicure', active: true });
 
   // Settings form state
-  const [settingsForm, setSettingsForm] = useState({ openTime: '09:00', closeTime: '18:00', slotInterval: 60 });
+  const [settingsForm, setSettingsForm] = useState({ 
+    openTime: '09:00', 
+    closeTime: '18:00', 
+    slotInterval: 60,
+    closedDays: [0, 1], // Default: Sunday, Monday
+    blockedDates: [] as string[],
+    minAdvanceHours: 2
+  });
+  const [newBlockedDate, setNewBlockedDate] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -61,7 +69,14 @@ export default function Admin() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setSettings(data);
-        setSettingsForm({ openTime: data.openTime, closeTime: data.closeTime, slotInterval: data.slotInterval });
+        setSettingsForm({ 
+          openTime: data.openTime, 
+          closeTime: data.closeTime, 
+          slotInterval: data.slotInterval,
+          closedDays: data.closedDays || [],
+          blockedDates: data.blockedDates || [],
+          minAdvanceHours: data.minAdvanceHours || 0
+        });
       }
     });
 
@@ -264,6 +279,8 @@ export default function Admin() {
   };
 
   // --- Render Helpers ---
+  const pendingCount = appointments.filter(a => a.status === 'pending').length;
+
   const generateTimeOptions = () => {
     const times = [];
     let [hour, minute] = settings.openTime.split(':').map(Number);
@@ -388,9 +405,14 @@ export default function Admin() {
           </button>
           <button 
             onClick={() => setActiveTab('appointments')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'appointments' ? 'bg-gold-500 text-black' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap relative ${activeTab === 'appointments' ? 'bg-gold-500 text-black' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
             <Calendar className="w-4 h-4" /> Agendamentos
+            {pendingCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg border border-zinc-900">
+                {pendingCount}
+              </span>
+            )}
           </button>
           <button 
             onClick={() => setActiveTab('services')}
@@ -573,6 +595,18 @@ export default function Admin() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 w-full sm:w-auto">
+                          {!isBlocked && (
+                            <button 
+                              onClick={() => {
+                                const text = `Olá ${app.customerName}! Passando para lembrar do seu agendamento de ${app.serviceName} no dia ${app.date.split('-').reverse().join('/')} às ${app.time}. Podemos confirmar?`;
+                                window.open(`https://wa.me/55${app.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                              }} 
+                              className="p-2 bg-green-900/20 text-green-400 hover:bg-green-900/40 rounded-lg transition-colors" 
+                              title="Enviar Lembrete no WhatsApp"
+                            >
+                              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                            </button>
+                          )}
                           {!isBlocked && app.status !== 'confirmed' && (
                             <button onClick={() => updateStatus(app.id, 'confirmed')} className="p-2 bg-green-900/20 text-green-400 hover:bg-green-900/40 rounded-lg transition-colors" title="Confirmar">
                               <CheckCircle2 className="w-5 h-5" />
@@ -775,16 +809,89 @@ export default function Admin() {
                     <input type="time" value={settingsForm.closeTime} onChange={e => setSettingsForm({...settingsForm, closeTime: e.target.value})} className="w-full p-2 bg-black border border-zinc-800 rounded text-sm text-white" style={{ colorScheme: 'dark' }} required />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-zinc-500 mb-1">Intervalo entre agendamentos (minutos)</label>
-                  <select value={settingsForm.slotInterval} onChange={e => setSettingsForm({...settingsForm, slotInterval: Number(e.target.value)})} className="w-full p-2 bg-black border border-zinc-800 rounded text-sm text-white" required>
-                    <option value={30}>30 minutos</option>
-                    <option value={60}>1 hora</option>
-                    <option value={90}>1 hora e meia</option>
-                    <option value={120}>2 horas</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Intervalo (minutos)</label>
+                    <select value={settingsForm.slotInterval} onChange={e => setSettingsForm({...settingsForm, slotInterval: Number(e.target.value)})} className="w-full p-2 bg-black border border-zinc-800 rounded text-sm text-white" required>
+                      <option value={30}>30 minutos</option>
+                      <option value={60}>1 hora</option>
+                      <option value={90}>1 hora e meia</option>
+                      <option value={120}>2 horas</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Antecedência Mínima (horas)</label>
+                    <select value={settingsForm.minAdvanceHours} onChange={e => setSettingsForm({...settingsForm, minAdvanceHours: Number(e.target.value)})} className="w-full p-2 bg-black border border-zinc-800 rounded text-sm text-white" required>
+                      <option value={0}>Sem restrição</option>
+                      <option value={1}>1 hora</option>
+                      <option value={2}>2 horas</option>
+                      <option value={4}>4 horas</option>
+                      <option value={12}>12 horas</option>
+                      <option value={24}>24 horas</option>
+                    </select>
+                  </div>
                 </div>
-                <button type="submit" className="w-full py-3 bg-gold-600 hover:bg-gold-500 text-black font-medium rounded-lg transition-colors">
+
+                <div className="pt-4 border-t border-zinc-800">
+                  <h3 className="text-sm font-medium text-white mb-3">Dias da Semana Fechados</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].map((day, index) => (
+                      <label key={index} className="flex items-center gap-2 bg-black border border-zinc-800 px-3 py-2 rounded cursor-pointer hover:bg-zinc-900">
+                        <input 
+                          type="checkbox" 
+                          className="accent-gold-500"
+                          checked={settingsForm.closedDays.includes(index)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSettingsForm({...settingsForm, closedDays: [...settingsForm.closedDays, index]});
+                            } else {
+                              setSettingsForm({...settingsForm, closedDays: settingsForm.closedDays.filter(d => d !== index)});
+                            }
+                          }}
+                        />
+                        <span className="text-xs text-zinc-300">{day}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-zinc-800">
+                  <h3 className="text-sm font-medium text-white mb-3">Feriados e Datas Bloqueadas</h3>
+                  <div className="flex gap-2 mb-3">
+                    <input 
+                      type="date" 
+                      value={newBlockedDate}
+                      onChange={e => setNewBlockedDate(e.target.value)}
+                      className="flex-1 p-2 bg-black border border-zinc-800 rounded text-sm text-white" 
+                      style={{ colorScheme: 'dark' }}
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        if (newBlockedDate && !settingsForm.blockedDates.includes(newBlockedDate)) {
+                          setSettingsForm({...settingsForm, blockedDates: [...settingsForm.blockedDates, newBlockedDate]});
+                          setNewBlockedDate('');
+                        }
+                      }}
+                      className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {settingsForm.blockedDates.length === 0 && <span className="text-xs text-zinc-500">Nenhuma data bloqueada.</span>}
+                    {settingsForm.blockedDates.map(date => (
+                      <span key={date} className="bg-red-900/20 border border-red-900/50 text-red-400 text-xs px-2 py-1 rounded flex items-center gap-2">
+                        {date.split('-').reverse().join('/')}
+                        <button type="button" onClick={() => setSettingsForm({...settingsForm, blockedDates: settingsForm.blockedDates.filter(d => d !== date)})} className="hover:text-red-300">
+                          <XCircle className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full py-3 bg-gold-600 hover:bg-gold-500 text-black font-medium rounded-lg transition-colors mt-6">
                   Salvar Configurações
                 </button>
               </form>
