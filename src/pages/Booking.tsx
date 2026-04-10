@@ -56,7 +56,7 @@ export default function Booking() {
 
   const selectedServicesObjs = services.filter(s => selectedServices.includes(s.id));
   const hasTraditional = selectedServicesObjs.some(s => s.isTraditional);
-  const basePrice = selectedServicesObjs.reduce((sum, s) => sum + (s.price || 0), 0);
+  const basePrice = selectedServicesObjs.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
   const finalPrice = basePrice + (hasTraditional && addGelPolish ? 10 : 0);
 
   useEffect(() => {
