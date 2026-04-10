@@ -49,9 +49,16 @@ export default function Admin() {
     if (!user) return;
 
     // Fetch Appointments
-    const qApps = query(collection(db, 'appointments'), orderBy('date', 'desc'), orderBy('time', 'asc'));
+    const qApps = query(collection(db, 'appointments'));
     const unsubApps = onSnapshot(qApps, (snapshot) => {
-      setAppointments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      apps.sort((a: any, b: any) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return a.time.localeCompare(b.time);
+      });
+      setAppointments(apps);
+    }, (error) => {
+      console.error("Error fetching appointments:", error);
     });
 
     // Fetch Services
@@ -302,15 +309,15 @@ export default function Admin() {
   
   const revenueToday = confirmedApps
     .filter(a => isToday(parseISO(a.date)))
-    .reduce((sum, a) => sum + a.price, 0);
+    .reduce((sum, a) => sum + (Number(a.price) || 0), 0);
     
   const revenueWeek = confirmedApps
     .filter(a => isThisWeek(parseISO(a.date)))
-    .reduce((sum, a) => sum + a.price, 0);
+    .reduce((sum, a) => sum + (Number(a.price) || 0), 0);
     
   const revenueMonth = confirmedApps
     .filter(a => isThisMonth(parseISO(a.date)))
-    .reduce((sum, a) => sum + a.price, 0);
+    .reduce((sum, a) => sum + (Number(a.price) || 0), 0);
 
   const customersMap = appointments.reduce((acc: any, app: any) => {
     if (app.customerName.includes('BLOQUEADO')) return acc;

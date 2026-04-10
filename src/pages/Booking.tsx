@@ -108,12 +108,15 @@ export default function Booking() {
 
     const q = query(
       collection(db, 'appointments'),
-      where('date', '==', selectedDate),
-      where('status', 'in', ['pending', 'confirmed'])
+      where('date', '==', selectedDate)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const slots = snapshot.docs.map(doc => doc.data().time);
+      const slots = snapshot.docs
+        .map(doc => doc.data())
+        .filter(data => ['pending', 'confirmed'].includes(data.status))
+        .map(data => data.time);
+        
       setBookedSlots(slots);
       
       // If the currently selected time just got booked, clear it
