@@ -21,7 +21,7 @@ export default function Booking() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [dayAppointments, setDayAppointments] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -84,6 +84,19 @@ export default function Booking() {
 
   const TIME_SLOTS = generateTimeSlots();
 
+  const isSlotBooked = (time: string) => {
+    const appsAtTime = dayAppointments.filter(a => a.time === time);
+    
+    if (selectedProfessional) {
+      return appsAtTime.some(a => a.professionalId === selectedProfessional);
+    } else {
+      const activeProfessionalsCount = professionals.filter(p => p.active).length || 1;
+      return appsAtTime.length >= activeProfessionalsCount;
+    }
+  };
+
+  const isAllSlotsBooked = TIME_SLOTS.length > 0 && TIME_SLOTS.every(time => isSlotBooked(time));
+
   const isTimeValid = (timeStr: string) => {
     const todayFormatted = new Date().toLocaleDateString('en-CA');
     if (selectedDate !== todayFormatted) return true; // Future date is fine
@@ -102,7 +115,7 @@ export default function Booking() {
   // Fetch booked slots when date changes
   useEffect(() => {
     if (!selectedDate) {
-      setBookedSlots([]);
+      setDayAppointments([]);
       return;
     }
 
@@ -112,15 +125,15 @@ export default function Booking() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const slots = snapshot.docs
+      const apps = snapshot.docs
         .map(doc => doc.data())
-        .filter(data => ['pending', 'confirmed'].includes(data.status))
-        .map(data => data.time);
+        .filter(data => ['pending', 'confirmed'].includes(data.status));
         
-      setBookedSlots(slots);
+      setDayAppointments(apps);
       
-      // If the currently selected time just got booked, clear it
-      if (slots.includes(selectedTime)) {
+      // If the currently selected time just got booked for the selected professional, clear it
+      const isStillAvailable = !apps.some(a => a.time === selectedTime && (selectedProfessional ? a.professionalId === selectedProfessional : false));
+      if (!isStillAvailable) {
         setSelectedTime('');
       }
     });
@@ -448,7 +461,7 @@ export default function Booking() {
                   </label>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {TIME_SLOTS.map(time => {
-                      const isBooked = bookedSlots.includes(time);
+                      const isBooked = isSlotBooked(time);
                       const isValid = isTimeValid(time);
                       const disabled = isBooked || !isValid;
                       
@@ -471,7 +484,7 @@ export default function Booking() {
                       );
                     })}
                   </div>
-                  {bookedSlots.length === TIME_SLOTS.length && TIME_SLOTS.length > 0 && (
+                  {isAllSlotsBooked && (
                     <p className="text-red-400 text-sm mt-2">Todos os horários esgotados para este dia.</p>
                   )}
                   {TIME_SLOTS.length === 0 && (

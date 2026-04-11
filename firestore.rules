@@ -111,6 +111,17 @@ service cloud.firestore {
              data.active is bool;
     }
 
+    function isValidExpense(data) {
+      let allowedFields = ['description', 'amount', 'date', 'category', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(allowedFields) &&
+             validStringLength('description', 2, 200) &&
+             data.amount is number && data.amount > 0 &&
+             isValidDateString(data.date) &&
+             validStringLength('category', 2, 100) &&
+             data.createdAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -142,6 +153,12 @@ service cloud.firestore {
     match /professionals/{professionalId} {
       allow read: if true;
       allow create, update: if isAdmin() && isValidProfessional(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && isValidExpense(request.resource.data);
       allow delete: if isAdmin();
     }
   }

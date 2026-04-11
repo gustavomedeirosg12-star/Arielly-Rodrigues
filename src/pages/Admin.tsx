@@ -10,9 +10,10 @@ export default function Admin() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({ openTime: '09:00', closeTime: '18:00', slotInterval: 60 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'crm' | 'appointments' | 'services' | 'professionals' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'crm' | 'appointments' | 'services' | 'professionals' | 'finance' | 'settings'>('dashboard');
 
   // Block time state
   const [blockDate, setBlockDate] = useState('');
@@ -25,6 +26,9 @@ export default function Admin() {
   // Professional form state
   const [editingProfessionalId, setEditingProfessionalId] = useState<string | null>(null);
   const [professionalForm, setProfessionalForm] = useState({ name: '', role: 'Manicure', active: true });
+
+  // Expense form state
+  const [expenseForm, setExpenseForm] = useState({ description: '', amount: 0, date: new Date().toISOString().split('T')[0], category: 'Outros' });
 
   // Settings form state
   const [settingsForm, setSettingsForm] = useState({ 
@@ -71,6 +75,11 @@ export default function Admin() {
       setProfessionals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
+    // Fetch Expenses
+    const unsubExpenses = onSnapshot(query(collection(db, 'expenses'), orderBy('date', 'desc')), (snapshot) => {
+      setExpenses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     // Fetch Settings
     const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
       if (docSnap.exists()) {
@@ -91,6 +100,7 @@ export default function Admin() {
       unsubApps();
       unsubServices();
       unsubProfessionals();
+      unsubExpenses();
       unsubSettings();
     };
   }, [user]);
@@ -273,6 +283,33 @@ export default function Admin() {
     }
   };
 
+  // --- Expenses Logic ---
+  const handleSaveExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, 'expenses'), {
+        ...expenseForm,
+        createdAt: serverTimestamp()
+      });
+      setExpenseForm({ description: '', amount: 0, date: new Date().toISOString().split('T')[0], category: 'Outros' });
+      alert('Despesa salva com sucesso!');
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      alert('Erro ao salvar despesa.');
+    }
+  };
+
+  const deleteExpense = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta despesa?')) {
+      try {
+        await deleteDoc(doc(db, 'expenses', id));
+      } catch (error) {
+        console.error('Error deleting expense:', error);
+        alert('Erro ao excluir despesa.');
+      }
+    }
+  };
+
   // --- Settings Logic ---
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,6 +355,12 @@ export default function Admin() {
   const revenueMonth = confirmedApps
     .filter(a => isThisMonth(parseISO(a.date)))
     .reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+
+  const expensesMonth = expenses
+    .filter(e => e.date && isThisMonth(parseISO(e.date)))
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+  const netProfitMonth = revenueMonth - expensesMonth;
 
   const customersMap = appointments.reduce((acc: any, app: any) => {
     if (app.customerName.includes('BLOQUEADO')) return acc;
@@ -434,6 +477,12 @@ export default function Admin() {
             <Briefcase className="w-4 h-4" /> Profissionais
           </button>
           <button 
+            onClick={() => setActiveTab('finance')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'finance' ? 'bg-gold-500 text-black' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
+          >
+            <DollarSign className="w-4 h-4" /> Financeiro
+          </button>
+          <button 
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'bg-gold-500 text-black' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}
           >
@@ -469,10 +518,118 @@ export default function Admin() {
               </div>
               <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
                 <div className="flex items-center gap-3 text-zinc-400 mb-2">
+                  <DollarSign className="w-5 h-5 text-red-500" />
+                  <span className="text-sm font-medium">Despesas Mês</span>
+                </div>
+                <p className="text-3xl font-serif text-white">R$ {expensesMonth}</p>
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+                <div className="flex items-center gap-3 text-zinc-400 mb-2">
+                  <DollarSign className="w-5 h-5 text-green-500" />
+                  <span className="text-sm font-medium">Lucro Líquido Mês</span>
+                </div>
+                <p className="text-3xl font-serif text-white">R$ {netProfitMonth}</p>
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+                <div className="flex items-center gap-3 text-zinc-400 mb-2">
                   <CheckCircle2 className="w-5 h-5 text-gold-500" />
                   <span className="text-sm font-medium">Agendamentos Concluídos</span>
                 </div>
                 <p className="text-3xl font-serif text-white">{confirmedApps.length}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content: Finance */}
+        {activeTab === 'finance' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-medium text-white mb-6">Controle de Despesas e Fluxo de Caixa</h2>
+            
+            <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+              <h3 className="text-lg font-medium text-white mb-4">Adicionar Nova Despesa</h3>
+              <form onSubmit={handleSaveExpense} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                <div className="lg:col-span-2">
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Descrição</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={expenseForm.description}
+                    onChange={e => setExpenseForm({...expenseForm, description: e.target.value})}
+                    className="w-full p-3 rounded-lg border border-zinc-800 bg-black text-white focus:border-gold-500 outline-none"
+                    placeholder="Ex: Aluguel, Produtos, Luz"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Valor (R$)</label>
+                  <input 
+                    type="number" 
+                    required
+                    min="0"
+                    step="0.01"
+                    value={expenseForm.amount}
+                    onChange={e => setExpenseForm({...expenseForm, amount: Number(e.target.value)})}
+                    className="w-full p-3 rounded-lg border border-zinc-800 bg-black text-white focus:border-gold-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">Data</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={expenseForm.date}
+                    onChange={e => setExpenseForm({...expenseForm, date: e.target.value})}
+                    className="w-full p-3 rounded-lg border border-zinc-800 bg-black text-white focus:border-gold-500 outline-none color-scheme-dark"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+                <div>
+                  <button type="submit" className="w-full py-3 bg-gold-500 text-black font-medium rounded-lg hover:bg-gold-400 transition-colors flex items-center justify-center gap-2">
+                    <Plus className="w-4 h-4" /> Adicionar
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+              <div className="p-6 border-b border-zinc-800">
+                <h3 className="text-lg font-medium text-white">Histórico de Despesas</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-zinc-400">
+                  <thead className="text-xs text-zinc-500 bg-black border-b border-zinc-800 uppercase">
+                    <tr>
+                      <th className="px-6 py-4 font-medium">Data</th>
+                      <th className="px-6 py-4 font-medium">Descrição</th>
+                      <th className="px-6 py-4 font-medium">Valor</th>
+                      <th className="px-6 py-4 font-medium text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-zinc-500">Nenhuma despesa registrada.</td>
+                      </tr>
+                    ) : (
+                      expenses.map(expense => (
+                        <tr key={expense.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/20 transition-colors">
+                          <td className="px-6 py-4">{expense.date ? expense.date.split('-').reverse().join('/') : '-'}</td>
+                          <td className="px-6 py-4 text-white">{expense.description}</td>
+                          <td className="px-6 py-4 text-red-400 font-medium">R$ {expense.amount}</td>
+                          <td className="px-6 py-4 text-right">
+                            <button 
+                              onClick={() => deleteExpense(expense.id)}
+                              className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Excluir despesa"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

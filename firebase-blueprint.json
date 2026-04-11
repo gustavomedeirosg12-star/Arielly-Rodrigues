@@ -120,6 +120,34 @@
         }
       },
       "required": ["name", "role", "active"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "An expense or cost incurred by the business.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "A description of the expense."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The monetary amount of the expense."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date the expense occurred in YYYY-MM-DD format."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the expense (e.g., Aluguel, Produtos, Luz)."
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "When the expense record was created."
+        }
+      },
+      "required": ["description", "amount", "date", "category", "createdAt"]
     }
   },
   "firestore": {
@@ -146,6 +174,12 @@
         "$ref": "#/entities/Professional"
       },
       "description": "Stores staff members."
+    },
+    "/expenses/{expenseId}": {
+      "schema": {
+        "$ref": "#/entities/Expense"
+      },
+      "description": "Stores business expenses."
     }
   }
 }
