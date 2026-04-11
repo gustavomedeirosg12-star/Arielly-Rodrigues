@@ -368,7 +368,7 @@ export default function Admin() {
       acc[app.customerPhone] = { name: app.customerName, phone: app.customerPhone, totalSpent: 0, appointments: 0 };
     }
     if (app.status === 'confirmed') {
-      acc[app.customerPhone].totalSpent += app.price;
+      acc[app.customerPhone].totalSpent += (Number(app.price) || 0);
     }
     acc[app.customerPhone].appointments += 1;
     return acc;
